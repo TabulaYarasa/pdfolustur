@@ -1,103 +1,178 @@
-import Image from "next/image";
+'use client';
+
+import { useState } from 'react';
+import { TiptapEditor } from '@/components/tiptap-editor';
+import { Button } from '@/components/ui/button';
+import { Download } from 'lucide-react';
 
 export default function Home() {
-  return (
-    <div className="font-sans grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20">
-      <main className="flex flex-col gap-[32px] row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="font-mono list-inside list-decimal text-sm/6 text-center sm:text-left">
-          <li className="mb-2 tracking-[-.01em]">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] font-mono font-semibold px-1 py-0.5 rounded">
-              src/app/page.tsx
-            </code>
-            .
-          </li>
-          <li className="tracking-[-.01em]">
-            Save and see your changes instantly.
-          </li>
-        </ol>
+  const [content, setContent] = useState('');
+  const [title, setTitle] = useState('');
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:w-auto"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
+  const generatePDF = async () => {
+    // Dinamik import ile html2pdf'i yükle (client-side only)
+    const html2pdf = (await import('html2pdf.js')).default;
+
+    // PDF için HTML içeriği oluştur
+    const element = document.createElement('div');
+    element.style.padding = '20px';
+    element.style.fontFamily = 'Arial, sans-serif';
+    element.style.fontSize = '12pt';
+    element.style.lineHeight = '1.6';
+    element.style.color = '#000';
+
+    // Başlık ekle
+    if (title) {
+      const titleElement = document.createElement('h1');
+      titleElement.style.fontSize = '20pt';
+      titleElement.style.fontWeight = 'bold';
+      titleElement.style.marginBottom = '20px';
+      titleElement.textContent = title;
+      element.appendChild(titleElement);
+    }
+
+    // İçerik ekle ve stillendirme
+    const contentDiv = document.createElement('div');
+    contentDiv.innerHTML = content;
+
+    // Numaralı listeleri düz metne çevir
+    const orderedLists = contentDiv.querySelectorAll('ol');
+    orderedLists.forEach(ol => {
+      const items = ol.querySelectorAll('li');
+      const div = document.createElement('div');
+      div.style.marginBottom = '10px';
+
+      items.forEach((li, index) => {
+        const p = document.createElement('p');
+        p.style.margin = '5px 0';
+        p.style.paddingLeft = '0';
+        p.style.textIndent = '0';
+        p.textContent = `${index + 1}. ${li.textContent || ''}`;
+        div.appendChild(p);
+      });
+
+      ol.replaceWith(div);
+    });
+
+    // Madde işaretli listeleri düz metne çevir
+    const unorderedLists = contentDiv.querySelectorAll('ul');
+    unorderedLists.forEach(ul => {
+      const items = ul.querySelectorAll('li');
+      const div = document.createElement('div');
+      div.style.marginBottom = '10px';
+
+      items.forEach(li => {
+        const p = document.createElement('p');
+        p.style.margin = '5px 0';
+        p.style.paddingLeft = '0';
+        p.style.textIndent = '0';
+        p.textContent = `• ${li.textContent || ''}`;
+        div.appendChild(p);
+      });
+
+      ul.replaceWith(div);
+    });
+
+    // Stiller ekle
+    const style = document.createElement('style');
+    style.textContent = `
+      @page {
+        margin: 15mm;
+      }
+      body, div {
+        font-family: Arial, sans-serif;
+        font-size: 12pt;
+        line-height: 1.6;
+        color: #000;
+      }
+      p {
+        margin: 6px 0;
+        padding: 0;
+        line-height: 1.6;
+      }
+      strong {
+        font-weight: bold;
+      }
+      em {
+        font-style: italic;
+      }
+    `;
+    element.appendChild(style);
+    element.appendChild(contentDiv);
+
+    // PDF ayarları
+    const opt = {
+      margin: [15, 15, 15, 15] as [number, number, number, number],
+      filename: title ? `${title}.pdf` : 'belge.pdf',
+      image: { type: 'jpeg' as const, quality: 0.98 },
+      html2canvas: {
+        scale: 2,
+        useCORS: true,
+        letterRendering: true
+      },
+      jsPDF: {
+        unit: 'mm' as const,
+        format: 'a4' as const,
+        orientation: 'portrait' as const
+      }
+    };
+
+    // PDF oluştur ve indir
+    html2pdf().set(opt).from(element).save();
+  };
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-gray-100 p-4 md:p-8">
+      <div className="max-w-4xl mx-auto">
+        <div className="bg-white rounded-lg shadow-lg p-6 md:p-8">
+          {/* Header */}
+          <div className="mb-6">
+            <h1 className="text-3xl font-bold text-gray-900 mb-2">PDF Oluşturucu</h1>
+            <p className="text-gray-600">Metninizi yazın ve PDF olarak indirin</p>
+          </div>
+
+          {/* Başlık Input */}
+          <div className="mb-6">
+            <label htmlFor="title" className="block text-sm font-medium text-gray-700 mb-2">
+              Belge Başlığı (İsteğe Bağlı)
+            </label>
+            <input
+              id="title"
+              type="text"
+              placeholder="Başlık girin..."
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              className="w-full text-xl font-semibold text-gray-900 placeholder:text-gray-400 border-2 border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none px-4 py-3 rounded-lg transition-all"
             />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 w-full sm:w-auto md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
+          </div>
+
+          {/* Editor */}
+          <div className="mb-6">
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              İçerik
+            </label>
+            <TiptapEditor content={content} onChange={setContent} />
+          </div>
+
+          {/* Download Button */}
+          <div className="flex justify-end">
+            <Button
+              onClick={generatePDF}
+              size="lg"
+              className="gap-2"
+              disabled={!content.trim()}
+            >
+              <Download className="h-5 w-5" />
+              PDF İndir
+            </Button>
+          </div>
         </div>
-      </main>
-      <footer className="row-start-3 flex gap-[24px] flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
+
+        {/* Info */}
+        <div className="text-center mt-6 text-gray-600 text-sm">
+          <p>Tiptap editör ile zengin metin düzenleme, PDF olarak indirme</p>
+        </div>
+      </div>
     </div>
   );
 }

@@ -1,0 +1,25 @@
+version: '3.8'
+
+services:
+  pdf-app:
+    # GitHub Container Registry'den image çek
+    image: ghcr.io/GITHUB_USERNAME/pdfolustur:latest
+
+    # Eğer local'de build etmek isterseniz bu satırları açın:
+    # build:
+    #   context: .
+    #   dockerfile: Dockerfile
+
+    container_name: pdf-olusturucu
+    restart: unless-stopped
+    ports:
+      - "3099:3000"  # Host:Container - Server'da 3099 portunu kullan
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:3000/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
